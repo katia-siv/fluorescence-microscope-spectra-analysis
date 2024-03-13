@@ -15,6 +15,7 @@ em = "5085-ascii.txt" #ET640_30x
 # Excitation Filters Spectra 350 - 750 nm
 exc = "5750-ascii.txt" #ET590_33m
 
+# intensity data from web digitizer
 amber_led_intensity = '''
 380, 0.200483645887104
 380.5, 0.10402768183473654
