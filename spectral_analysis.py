@@ -6,8 +6,9 @@ Created on Wed Mar 13 13:28:10 2024
 """
 
 import os
+import matplotlib.pyplot as plt
 
-DIRECTORY = "/Users/ekaterinasivokon/Desktop/Harvard Cohen Lab/Spectra Data"
+DIRECTORY = "/Users/ekaterinasivokon/Desktop/Harvard Cohen Lab/fluorescence-microscope-spectra-analysis/Spectra_Data"
 # Dichroics Spectra 350 - 750 nm
 dichr = "5323-ascii.txt" #T612lpxr
 # Emission Filters Spectra 350 - 750 nm
@@ -742,7 +743,7 @@ amber_led_intensity = '''
 
 def read_txt_files(DIRECTORY):  
     '''Reads numerical data from text files in a specified directory,
-       createsdictionaries where keys are values from the 1st column (wavelength)
+       creates dictionaries where keys are values from the 1st column (wavelength)
        and values are values from the 2nd column. 
        Returns 3 dictionaries for data about dichroic, em & exc filters.
     '''
@@ -757,7 +758,6 @@ def read_txt_files(DIRECTORY):
                 data_dict = {float(line.split()[0]): float(line.split()[1]) for line in data}
                 
                 if filename == dichr:
-                    dict_dichr = data_dict
                     dict_dichr = data_dict
                 elif filename == em:
                     dict_em = data_dict
@@ -775,15 +775,100 @@ def create_dictionary_from_string(input_str):
     
     return  dict_from_string
 
+def normalize_spectra(dictionary):
+    x_min = min(dictionary.values())
+    x_max = max(dictionary.values())
+    
+    normalized_dict = {k: (v - x_min) / (x_max - x_min) for k, v in dictionary.items()}
+    
+    return normalized_dict
+
+def plot_overlap(*dicts):
+    '''
+    Plots graphs for all input dictionaries and a graph for the overlapping part.
+    Creates a new dictionary with just the overlapping x and y values.
+    Returns a dictionary containing the overlapping x and y values.
+    '''
+    # Plot all graphs
+    for d in dicts:
+        plt.plot(list(d.keys()), list(d.values()), marker='o')
+    plt.title('All Graphs')
+    plt.xlabel('X values')
+    plt.ylabel('Y values')
+    plt.show()
+    
+    # Find overlap
+# =============================================================================
+#     bluedict and orangedict have the same keys.
+#     if both items in bluedict and orangedict have equal keys:
+# 
+#         if value in bluedict > value in orangedict, the value in newdict
+#         is equal to the values in orangedict.
+#         if value in bluedict < value in orangedict, the value in newdict
+#         is equal to the values in bluedict.
+#         if value in bluedict = value in orangedict, the value in newdict
+#         is equal to this same value.
+#     
+#     new dict should have the same keys as the bluedict and orangedict.
+#     
+# =============================================================================
+    
+    overlap_keys = set(dicts[0].keys())
+    for d in dicts[1:]:
+        overlap_keys &= set(d.keys())
+    
+    # Extract overlapping parts
+    overlap_dict = {x: dicts[0][x] for x in overlap_keys}
+    
+    # Plot overlap
+    plt.plot(list(overlap_dict.keys()), list(overlap_dict.values()), marker='o', color='red')
+    plt.title('Overlap Graph')
+    plt.xlabel('X values')
+    plt.ylabel('Y values')
+    plt.show()
+    
+    return overlap_dict
+
+def cutoff_dicts(*dicts, minwavelength, maxwavelength):
+    '''Takes in several dictionaries and two values.
+        returns dictionaries with the same values, but with keys only in the
+        range of minwavelength and maxwavelength. For example:
+        dict1 = {1: 10, 2: 20, 3: 30, 4: 120}
+        dict2 = {1: 5, 2: 15, 3: 25, 4: 108}
+        minwavelength = 2
+        maxwavelength = 3
+        Returns:
+        newdict1 = {2: 20, 3: 30}
+        newdict1 = {2: 20, 3: 30}
+    '''
+    new_dicts = ()
+   
+    for d in dicts:
+       new_dict = {k: v for k, v in d.items() if minwavelength <= k <= maxwavelength}
+       new_dicts += (new_dict,)
+   
+    return new_dicts
+
 def main():
     
-    print("Specify filenames for dichroic&filters (dichr, em, exc); \n")
+    print("Specify filenames for dichroic&filters (dichr, em, exc). \n")
     print("Specify amber_led_intensity. \n")
+    print("Specify cutoff wavelengths. \n")
+    minwavelength = 500
+    maxwavelength = 700
     
     dict_dichr, dict_em, dict_exc = read_txt_files(DIRECTORY)
     dict_led_intensity = create_dictionary_from_string(amber_led_intensity)
-    print(dict_led_intensity)
-
+    
+    # Normalize
+    dict_dichr = normalize_spectra(dict_dichr)
+    dict_led_intensity = normalize_spectra(dict_led_intensity)
+    
+    # Cutoff irrelevant wavelengths
+    cut_dict_dichr, cut_dict_led_intensity = cutoff_dicts(dict_dichr, dict_led_intensity, minwavelength=minwavelength, maxwavelength=maxwavelength)
+  
+    overlap_dict = plot_overlap(cut_dict_dichr, cut_dict_led_intensity)
+    #print("New dictionary with overlapping parts:", overlap_dict)
 
 if __name__ == "__main__":
     main()
