@@ -7,14 +7,21 @@ Created on Wed Mar 13 13:28:10 2024
 
 import os
 import matplotlib.pyplot as plt
+import pandas as pd
+from itertools import islice
+import numpy as np
+import math
 
 DIRECTORY = "/Users/ekaterinasivokon/Desktop/Harvard Cohen Lab/fluorescence-microscope-spectra-analysis/Spectra_Data"
-# Dichroics Spectra 350 - 750 nm
-dichr = "5323-ascii.txt" #T612lpxr
-# Emission Filters Spectra 350 - 750 nm
-em = "5085-ascii.txt" #ET640_30x
-# Excitation Filters Spectra 350 - 750 nm
-exc = "5750-ascii.txt" #ET590_33m
+DIRECTORY_EXC = "/Users/ekaterinasivokon/Desktop/Harvard Cohen Lab/fluorescence-microscope-spectra-analysis/excel_spectra_data"
+# =============================================================================
+# # Dichroics Spectra 350 - 750 nm
+# dichr = "5323-ascii.txt" #T612lpxr
+# # Emission Filters Spectra 350 - 750 nm
+# em = "5085-ascii.txt" #ET640_30x
+# # Excitation Filters Spectra 350 - 750 nm
+# exc = "5750-ascii.txt" #ET590_33m
+# =============================================================================
 
 # intensity data from web digitizer
 amber_led_intensity = '''
@@ -776,10 +783,18 @@ def create_dictionary_from_string(input_str):
     return  dict_from_string
 
 def normalize_spectra(dictionary):
-    x_min = min(dictionary.values())
-    x_max = max(dictionary.values())
     
-    normalized_dict = {k: (v - x_min) / (x_max - x_min) for k, v in dictionary.items()}
+    # Filter the dictionary in case it has NaN values
+    # The normalization calculation is performed only on non-NaN values
+    valid_values = [v for v in dictionary.values() if not math.isnan(v)]
+    
+    if not valid_values:
+        return {}  # Return an empty dictionary if all values are NaN
+    
+    x_min = min(valid_values)
+    x_max = max(valid_values)
+    
+    normalized_dict = {k: (v - x_min) / (x_max - x_min) if not math.isnan(v) else math.nan for k, v in dictionary.items()}
     
     return normalized_dict
 
@@ -849,6 +864,16 @@ def cutoff_dicts(*dicts, minwavelength, maxwavelength):
    
     return new_dicts
 
+def read_excel_to_dicts(filepath):
+    data = pd.read_excel(filepath)
+    dict1, dict2, dict3 = {}, {}, {}  
+    for index, row in data.iterrows():
+       dict1[row['Wavelength (nm)']] = row[data.columns[1]]
+       dict2[row['Wavelength (nm)']] = row[data.columns[2]]
+       dict3[row['Wavelength (nm)']] = row[data.columns[3]]
+   
+    return dict1, dict2, dict3
+
 def main():
     
     print("Specify filenames for dichroic&filters (dichr, em, exc). \n")
@@ -857,17 +882,32 @@ def main():
     minwavelength = 500
     maxwavelength = 700
     
-    dict_dichr, dict_em, dict_exc = read_txt_files(DIRECTORY)
+    filename = "JF608 set.xlsx"
+    filepath = f"{DIRECTORY_EXC}/{filename}"
+    dict_exc, dict_dichr, dict_em = read_excel_to_dicts(filepath)
+# =============================================================================
+#     print("exc:", list(islice(exc.items(), 5)), '\n')
+#     print(type(exc), '\n')
+#     print("dichr:", list(islice(dichr.items(), 5)))
+#     print("em:", list(islice(em.items(), 5)))
+#     
+# =============================================================================
+#    dict_dichr, dict_em, dict_exc = read_txt_files(DIRECTORY)
+
+    # Initialize dictionary with LED intensity data
     dict_led_intensity = create_dictionary_from_string(amber_led_intensity)
     
-    # Normalize
+    # Normalize all data
     dict_dichr = normalize_spectra(dict_dichr)
+    dict_exc = normalize_spectra(dict_exc)
+    dict_em = normalize_spectra(dict_em)
     dict_led_intensity = normalize_spectra(dict_led_intensity)
     
     # Cutoff irrelevant wavelengths
-    cut_dict_dichr, cut_dict_led_intensity = cutoff_dicts(dict_dichr, dict_led_intensity, minwavelength=minwavelength, maxwavelength=maxwavelength)
-  
-    overlap_dict = plot_overlap(cut_dict_dichr, cut_dict_led_intensity)
+    cut_dict_dichr, cut_dict_led_intensity, cut_dict_em, cut_dict_exc = cutoff_dicts(dict_dichr, dict_led_intensity, dict_em, dict_exc, minwavelength=minwavelength, maxwavelength=maxwavelength)
+    # print(cut_dict_dichr)
+    # Plot
+    overlap_dict = plot_overlap(cut_dict_dichr, cut_dict_em, cut_dict_exc)
     #print("New dictionary with overlapping parts:", overlap_dict)
 
 if __name__ == "__main__":
