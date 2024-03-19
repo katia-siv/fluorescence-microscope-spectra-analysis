@@ -11,6 +11,7 @@ import pandas as pd
 from itertools import islice
 import numpy as np
 import math
+from scipy.integrate import simps
 
 DIRECTORY = "/Users/ekaterinasivokon/Desktop/Harvard Cohen Lab/fluorescence-microscope-spectra-analysis/Spectra_Data"
 DIRECTORY_EXC = "/Users/ekaterinasivokon/Desktop/Harvard Cohen Lab/fluorescence-microscope-spectra-analysis/excel_spectra_data"
@@ -73,30 +74,82 @@ def normalize_spectra(dictionary):
     
     return normalized_dict
 
-def plot_dicts(*dicts):
+def plot_dicts(dicts, names):
     '''
-    Plots graphs for all input dictionaries and a graph for the overlapping part.
-    Creates a new dictionary with just the overlapping x and y values.
-    Returns a dictionary containing the overlapping x and y values.
+    A list of names is passed along with the dictionaries. 
+    Plots graphs for all input dictionaries with specified names.
     '''
-    legend_labels = []
     # Plot all graphs
-    for d in dicts:
+    for d, name in zip(dicts, names):
         x_values = list(d.keys())
         y_values = list(d.values())
-        plt.plot(x_values, y_values, label=f'Dict {len(legend_labels) + 1}')
-        legend_labels.append(f'{len(legend_labels) + 1}')
+        plt.plot(x_values, y_values, label=name)
     
     plt.title('All Graphs')
     plt.xlabel('Wavelength (nm)')
     plt.ylabel('Transmission %')
     
-    # Display legend
-    plt.legend(legend_labels)
-    
+    # Adjust legend's position
+    plt.legend(loc='center left', bbox_to_anchor=(0.78, 0.7))
+    plt.grid(True, which='both', linestyle=':', linewidth=0.7)
     plt.show()
     
-    return 
+    return
+
+def integrate_and_visualize(graphs):
+  
+    # Initialize the total area
+    total_area = 0
+    
+    # Create a figure for plotting
+    fig, ax = plt.subplots()
+    
+    # Find the minimum y-value for each x across all graphs, treating nan values as 0
+    min_y_values = {}
+    for graph in graphs:
+        for x, y in graph.items():
+            if not np.isnan(y):
+                if x not in min_y_values or (np.isnan(min_y_values[x]) or y < min_y_values[x]):
+                    min_y_values[x] = y if not np.isnan(y) else 0
+    
+    # Sort the x-values and corresponding minimum y-values
+    sorted_x = sorted(min_y_values.keys())
+    sorted_min_y = [min_y_values[x] for x in sorted_x]
+    
+    # Plot and shade the minimum graph
+    ax.plot(sorted_x, sorted_min_y, label='Minimum Graph', color='black')
+    ax.fill_between(sorted_x, sorted_min_y, color='red', alpha=0.5)
+    
+    # Iterate over each graph (dictionary) in the list
+    for graph in graphs:
+        # Filter out NaN values from the dictionary and treat them as 0
+        graph = {k: v if not np.isnan(v) else 0 for k, v in graph.items()}
+        
+        # Extract x and y values
+        x_values = list(graph.keys())
+        y_values = list(graph.values())
+        
+        # Sort the x and y values according to x
+        sorted_pairs = sorted(zip(x_values, y_values))
+        x_sorted, y_sorted = zip(*sorted_pairs)
+        
+        # Plot each graph
+        ax.plot(x_sorted, y_sorted, label=f'Graph')
+        
+        # Calculate the area under the minimum graph
+        if graph == graphs[-1]:  # Assuming the last graph is cut_dict_flex
+            area = simps(sorted_min_y, sorted_x)
+            total_area += area
+    
+    # Set plot labels and legend
+    ax.set_xlabel('X-axis')
+    ax.set_ylabel('Y-axis')
+    ax.legend()
+    
+    # Show the plot
+    plt.show()
+    
+    return total_area
 
 def cutoff_dicts(*dicts, minwavelength, maxwavelength):
     '''Takes in several dictionaries and two values.
@@ -131,7 +184,6 @@ def read_excel_to_dicts(filepath):
 def main():
     
     print("Specify filenames for dichroic&filters (dichr, em, exc). \n")
-    print("Specify amber_led_intensity. \n")
     print("Specify cutoff wavelengths. \n")
     minwavelength = 500
     maxwavelength = 700
@@ -158,7 +210,15 @@ def main():
     cut_dict_dichr, cut_dict_led_intensity, cut_dict_em, cut_dict_exc, cut_dict_flem, cut_dict_flex = cutoff_dicts(dict_dichr, dict_led_intensity, dict_em, dict_exc, dict_flem, dict_flex, minwavelength=minwavelength, maxwavelength=maxwavelength)
 
     # Plot
-    plotted_dicts = plot_dicts(cut_dict_dichr, cut_dict_em, cut_dict_exc, cut_dict_flem, cut_dict_flex)
+    dicts = [cut_dict_dichr, cut_dict_em, cut_dict_exc, cut_dict_flem, cut_dict_flex]
+    names = ["Dichroic", "Emission Filter", "Excitation Filter", "Fluorescence Emission", "Fluorescence Excitation"]
+    plotted_dicts = plot_dicts(dicts, names)
+    
+    # Find area under graphs
+    graphs = [cut_dict_dichr, cut_dict_flem, cut_dict_flex]
+    # print(graphs)
+    print('Area under is [cut_dict_dichr, cut_dict_flem, cut_dict_flex] is ', integrate_and_visualize(graphs), '\n')
+
 
 if __name__ == "__main__":
     main()
