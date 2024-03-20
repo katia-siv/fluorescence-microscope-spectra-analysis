@@ -50,6 +50,13 @@ def read_txt_files(DIRECTORY):
     return dict_dichr, dict_em, dict_exc
 
 def create_dictionary_from_string(input_str):
+    '''Creates a dictionary from a string input.  
+        Parameters:
+        input_str: A string containing key-value pairs separated
+        by commas and newlines.  
+        Returns:
+        A dictionary where keys & values are converted to floats.
+    '''
     dict_from_string = {}
     lines = input_str.strip().split('\n')
     for line in lines:
@@ -59,7 +66,9 @@ def create_dictionary_from_string(input_str):
     return  dict_from_string
 
 def normalize_spectra(dictionary):
-    
+    ''' Normalizes the values in a dictionary by scaling them between 0 & 1.   
+        If all values are NaN, an empty dictionary is returned.
+    '''
     # Filter the dictionary in case it has NaN values
     # The normalization calculation is performed only on non-NaN values
     valid_values = [v for v in dictionary.values() if not math.isnan(v)]
@@ -154,18 +163,17 @@ def integrate_and_visualize(graphs, names):
     
     return total_area
 
-
 def cutoff_dicts(*dicts, minwavelength, maxwavelength):
     '''Takes in several dictionaries and two values.
-        returns dictionaries with the same values, but with keys only in the
-        range of minwavelength and maxwavelength. For example:
-        dict1 = {1: 10, 2: 20, 3: 30, 4: 120}
-        dict2 = {1: 5, 2: 15, 3: 25, 4: 108}
-        minwavelength = 2
-        maxwavelength = 3
-        Returns:
-        newdict1 = {2: 20, 3: 30}
-        newdict1 = {2: 20, 3: 30}
+       Returns dictionaries with the same values, but with keys only in the
+       range of minwavelength and maxwavelength. For example:
+       dict1 = {1: 10, 2: 20, 3: 30, 4: 120}
+       dict2 = {1: 5, 2: 15, 3: 25, 4: 108}
+       minwavelength = 2
+       maxwavelength = 3
+       Returns:
+       newdict1 = {2: 20, 3: 30}
+       newdict1 = {2: 20, 3: 30}
     '''
     new_dicts = ()
    
@@ -176,6 +184,13 @@ def cutoff_dicts(*dicts, minwavelength, maxwavelength):
     return new_dicts
 
 def read_excel_to_dicts(filepath):
+    '''Reads data from an Excel file located at the specified filepath,
+       creates 3 dictionaries.
+       Returns:
+       A tuple with three dictionaries where keys are 'Wavelength (nm)'
+       (1st column from the Excel file),
+       and values are corresponding data from columns 2, 3, and 4.
+    '''
     data = pd.read_excel(filepath)
     dict1, dict2, dict3 = {}, {}, {}  
     for index, row in data.iterrows():
@@ -186,6 +201,19 @@ def read_excel_to_dicts(filepath):
     return dict1, dict2, dict3
 
 def main():
+    ''' Main function analyzes spectral data from specified folders located
+        in DIRECTORY and DIRECTORY_EXC.
+    
+        DIRECTORY is the filepath to Spectra_Data folder that contains .txt files
+        with Chroma filters ascii data. DIRECTORY_EXC is the filepath to 
+        excel_spectra_data folder that contains .xlsx files with any additional
+        spectra.
+        
+        Main function reads data from text & Excel files, normalizes the spectra,
+        cuts off irrelevant wavelengths (specified by user), plots the normalized
+        spectra, calculates and graphically interprets the total integrated area
+        under the graphs specified by user.
+    '''
     
     print('Spectra_Data folder contains .txt files with Chroma filters ascii data: \n')
     print(DIRECTORY, '\n')
@@ -227,7 +255,7 @@ def main():
     # graphs = [cut_dict_dichr, cut_dict_flem, cut_dict_flex]
     # names = ["Dichroic", "Fluorescence Emission", "Fluorescence Excitation"]
     graphs = [cut_dict_dichr, cut_dict_led_intensity]
-    names = ["Dichroic", "PT-54_TE Led Intensity"]
+    names = ["Dichroic", "PT-54-TE Led Intensity"]
     total_int_area = integrate_and_visualize(graphs, names)
     print('Calculating total integrated area under:', '\n')
     print(names, '\n')
