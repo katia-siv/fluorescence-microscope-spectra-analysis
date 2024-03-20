@@ -74,7 +74,7 @@ def normalize_spectra(dictionary):
     
     return normalized_dict
 
-def plot_dicts(dicts, names):
+def plot_dicts(dicts, names, save_path=None):
     '''
     A list of names is passed along with the dictionaries. 
     Plots graphs for all input dictionaries with specified names.
@@ -92,15 +92,27 @@ def plot_dicts(dicts, names):
     # Adjust legend's position
     plt.legend(loc='center left', bbox_to_anchor=(0.78, 0.7))
     plt.grid(True, which='both', linestyle=':', linewidth=0.7)
+    
+    # Determine the current working directory
+    if save_path is None:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        save_path = os.path.join(script_dir, 'opt_system.pdf')
+    plt.savefig(save_path, format='pdf', dpi=300, bbox_inches='tight')
     plt.show()
+
     
     return
 
-def integrate_and_visualize(graphs):
-  
-    # Initialize the total area
-    total_area = 0
-    
+def integrate_and_visualize(graphs, names):
+    '''
+    Iterates through each graph in the
+    input list, extracts x and y values, and finds the minimum y-value
+    for each x across all graphs, treating NaN values as 0.
+    Sorts the x-values and corresponding minimum y-values.
+    Plots minimum graph with red color & shades the area under it in red.
+    Finds the total area of the region shaded in red.
+    Plots each graph on the same plot. 
+    '''
     # Create a figure for plotting
     fig, ax = plt.subplots()
     
@@ -108,48 +120,40 @@ def integrate_and_visualize(graphs):
     min_y_values = {}
     for graph in graphs:
         for x, y in graph.items():
-            if not np.isnan(y):
-                if x not in min_y_values or (np.isnan(min_y_values[x]) or y < min_y_values[x]):
-                    min_y_values[x] = y if not np.isnan(y) else 0
+            y = 0 if np.isnan(y) else y  # Treat NaN values as 0
+            if x not in min_y_values or y < min_y_values[x]:
+                min_y_values[x] = y
     
     # Sort the x-values and corresponding minimum y-values
     sorted_x = sorted(min_y_values.keys())
     sorted_min_y = [min_y_values[x] for x in sorted_x]
     
-    # Plot and shade the minimum graph
-    ax.plot(sorted_x, sorted_min_y, label='Minimum Graph', color='black')
+    # Plot and shade the minimum graph (Integrated Region)
+    ax.plot(sorted_x, sorted_min_y, label='Integrated Region', color='red', linewidth=1)  # Thicker line for Integrated Region
     ax.fill_between(sorted_x, sorted_min_y, color='red', alpha=0.5)
     
-    # Iterate over each graph (dictionary) in the list
-    for graph in graphs:
-        # Filter out NaN values from the dictionary and treat them as 0
-        graph = {k: v if not np.isnan(v) else 0 for k, v in graph.items()}
-        
-        # Extract x and y values
-        x_values = list(graph.keys())
-        y_values = list(graph.values())
-        
-        # Sort the x and y values according to x
-        sorted_pairs = sorted(zip(x_values, y_values))
-        x_sorted, y_sorted = zip(*sorted_pairs)
-        
-        # Plot each graph
-        ax.plot(x_sorted, y_sorted, label=f'Graph')
-        
-        # Calculate the area under the minimum graph
-        if graph == graphs[-1]:  # Assuming the last graph is cut_dict_flex
-            area = simps(sorted_min_y, sorted_x)
-            total_area += area
+    # Plot each graph with custom legend names
+    for i, (graph, name) in enumerate(zip(graphs, names)):
+        x_values, y_values = zip(*sorted(graph.items()))
+        ax.plot(x_values, y_values, label=name)
+    
+    # Calculate the area under the minimum graph
+    total_area = simps(sorted_min_y, sorted_x)
+    
+    # Display total_area near the graph
+    ax.text(0.27, 0.6, f'Integrated Area = {round(total_area, 3)}', transform=ax.transAxes, ha='center', fontsize=14)
     
     # Set plot labels and legend
-    ax.set_xlabel('X-axis')
-    ax.set_ylabel('Y-axis')
+    ax.set_xlabel('Wavelength (nm)')
+    ax.set_ylabel('Transmission %')
     ax.legend()
     
     # Show the plot
     plt.show()
+    fig.savefig('int_area_plot.pdf', format='pdf', dpi=300, bbox_inches='tight')
     
     return total_area
+
 
 def cutoff_dicts(*dicts, minwavelength, maxwavelength):
     '''Takes in several dictionaries and two values.
@@ -216,8 +220,10 @@ def main():
     
     # Find area under graphs
     graphs = [cut_dict_dichr, cut_dict_flem, cut_dict_flex]
+    names = ["Dichroic", "Fluorescence Emission", "Fluorescence Excitation"]
+    total_int_area = integrate_and_visualize(graphs, names)
     # print(graphs)
-    print('Area under is [cut_dict_dichr, cut_dict_flem, cut_dict_flex] is ', integrate_and_visualize(graphs), '\n')
+    print('Area under is [cut_dict_dichr, cut_dict_flem, cut_dict_flex] is ', total_int_area, '\n')
 
 
 if __name__ == "__main__":
