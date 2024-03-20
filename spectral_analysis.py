@@ -187,10 +187,15 @@ def read_excel_to_dicts(filepath):
 
 def main():
     
-    print("Specify filenames for dichroic&filters (dichr, em, exc). \n")
-    print("Specify cutoff wavelengths. \n")
+    print('Spectra_Data folder contains .txt files with Chroma filters ascii data: \n')
+    print(DIRECTORY, '\n')
+    print('excel_spectra_data folder contains .xlsx files with any additional spectra: \n')
+    print(DIRECTORY_EXC, '\n')
+    print('-' * 30, sep='')
+
     minwavelength = 500
     maxwavelength = 700
+    print("Wavelengths range (nm):", minwavelength, '-', maxwavelength, '\n')
     
     # Read dichr, em and exc data
     filename = "JF608 set.xlsx"
@@ -218,12 +223,15 @@ def main():
     names = ["Dichroic", "Emission Filter", "Excitation Filter", "Fluorescence Emission", "Fluorescence Excitation"]
     plotted_dicts = plot_dicts(dicts, names)
     
-    # Find area under graphs
-    graphs = [cut_dict_dichr, cut_dict_flem, cut_dict_flex]
-    names = ["Dichroic", "Fluorescence Emission", "Fluorescence Excitation"]
+    # Find area under specified graphs
+    # graphs = [cut_dict_dichr, cut_dict_flem, cut_dict_flex]
+    # names = ["Dichroic", "Fluorescence Emission", "Fluorescence Excitation"]
+    graphs = [cut_dict_dichr, cut_dict_led_intensity]
+    names = ["Dichroic", "PT-54_TE Led Intensity"]
     total_int_area = integrate_and_visualize(graphs, names)
-    # print(graphs)
-    print('Area under is [cut_dict_dichr, cut_dict_flem, cut_dict_flex] is ', total_int_area, '\n')
+    print('Calculating total integrated area under:', '\n')
+    print(names, '\n')
+    print('Area =', total_int_area, '\n')
 
 
 if __name__ == "__main__":
